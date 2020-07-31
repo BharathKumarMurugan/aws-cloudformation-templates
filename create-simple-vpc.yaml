@@ -1,0 +1,109 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: "Creating custom VPC using CloudFormation Template"
+Resources:
+  # Creating a custom VPC
+  thorVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 11.0.1.0/24
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      InstanceTenancy: default
+      Tags:
+        - Key: Name
+          Value: thorVPC
+
+  # Creating Internet Gateway
+  thorIGW:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: thorIGW
+  # Attaching Internet Gateway with VPC
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref thorVPC
+      InternetGatewayId: !Ref thorIGW
+
+  # Creating a Public Subnet
+  thorPubSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: us-east-1b
+      VpcId: !Ref thorVPC
+      CidrBlock: 11.0.1.0/28
+      Tags:
+        - Key: Name
+          Value: thorPubSubnet
+
+  # Creating Route Table
+  thorRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref thorVPC
+      Tags:
+        - Key: Name
+          Value: thorRouteTable
+  
+  # Associating Subnet with Route Table
+  routeTableAssocName:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref thorPubSubnet
+      RouteTableId: !Ref thorRouteTable
+
+  # Adding Internet Gateway to the Route Table
+  routeName:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref thorRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref thorIGW
+
+  # Creating Security Group
+  thorSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: thorSecurityGroup
+      GroupDescription: thor Security Group
+      VpcId: !Ref thorVPC
+      SecurityGroupIngress:
+        -
+          CidrIp: "43.224.128.77/32"
+          FromPort: 22
+          ToPort: 22
+          IpProtocol: tcp
+        -
+          CidrIp: "0.0.0.0/0"
+          FromPort: 80
+          ToPort: 80
+          IpProtocol: tcp
+      Tags:
+        - Key: Name
+          Value: thorSecurityGroup
+
+# Exporting values
+Outputs:
+  # Exporting VPC ID
+  ThorVpcID:
+    Description: Exporting VPC ID
+    Value: !Ref thorVPC
+    Export:
+      Name:
+        Fn::Sub: "${AWS::StackName}-VPCID"
+  # Exporting Subnet ID
+  ThorSubnetID:
+    Description: Exporting Public Subnet ID
+    Value: !Ref thorPubSubnet
+    Export:
+      Name:
+        Fn::Sub: "${AWS::StackName}-SubnetID"
+  # Exporting Security Group ID
+  ThorSecurityGroupID:
+    Description: Exporting Security Group ID
+    Value: !Ref thorSecurityGroup
+    Export:
+      Name:
+        Fn::Sub: "${AWS::StackName}-SecurityGroupID"

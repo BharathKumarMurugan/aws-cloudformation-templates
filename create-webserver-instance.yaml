@@ -1,0 +1,53 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: "Create an ec2 instance"
+Parameters:
+  # Adding an external stack name as the parent stack (Nested Stack)
+  ThorVPC:
+    Description: "Name of the Parent Stack"
+    Type: String # Type of the value
+    Default: CreatingCustomVpcUsingCF # Parameter value
+  
+  # Importing existing KeyName
+  mjolnir:
+    Description: "Using Existing key pair to launch an instance"
+    Type: AWS::EC2::KeyPair::KeyName
+    Default: mjolnir # specify existing KeyName
+
+Resources:
+  # Create a web server
+  WebServerInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      # Referencing the keypair parameter
+      KeyName: 
+        Ref: test
+      DisableApiTermination: false
+      ImageId: ami-02354e95b39ca8dec
+      InstanceType: t2.micro
+      Monitoring: false
+      NetworkInterfaces:
+        -
+          AssociatePublicIpAddress: true
+          DeleteOnTermination: true
+          DeviceIndex : 0
+          # Importing Parent Stack's Exported values
+          GroupSet: 
+          - Fn::ImportValue: !Sub "${ThorVPC}-SecurityGroupID"
+          SubnetId:
+            Fn::ImportValue: !Sub "${ThorVPC}-SubnetID"
+
+      UserData:
+        'Fn::Base64': !Sub |
+          #!/bin/bash -x
+          yum install -y httpd
+          cd /var/www/html
+          echo "<html><body>Hello World!</body></html>" > index.html
+          service httpd start
+      Tags:
+        - Key: Name
+          Value: thor-webServer
+# Exporting values
+Outputs:
+  HelloWorldURL:
+    Description: The URL pointing to Hello World!.
+    Value: !Sub 'http://${WebServerInstance.PublicIp}'

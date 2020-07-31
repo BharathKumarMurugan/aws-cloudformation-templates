@@ -1,0 +1,108 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Creating a custom VPC",
+    "Metadata": {
+
+    },
+    "Parameters": {
+
+    },
+    "Mappings": {
+
+    },
+    "Conditions": {
+
+    },
+    "Resources": {
+        "myVPC": {
+            "Type": "AWS::EC2::VPC",
+            "Properties": {
+                "CidrBlock": "11.0.0.0/16",
+                "EnableDnsHostnames": true,
+                "EnableDnsSupport": true,
+                "InstanceTenancy": "default",
+                "Tags": [{
+                    "Key": "Name",
+                    "Value": "myVPC"
+                }]
+            }
+        },
+        "myvpcSubnet": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "AvailabilityZone": "us-east-1a",
+                "VpcId": {
+                    "Ref": "myVPC"
+                },
+                "CidrBlock": "11.0.1.0/26",
+                "Tags": [{
+                    "Key": "Name",
+                    "Value": "myvpcSubnet"
+                }]
+            }
+        },
+
+        "myvpcIGW": {
+            "Type": "AWS::EC2::InternetGateway",
+            "Properties": {
+                "Tags": [{
+                    "Key":"Name",
+                    "Value": "myvpcIGW"
+                }]
+            }
+        },
+        "AttachGateway": {
+            "Type": "AWS::EC2::VPCGatewayAttachment",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "myVPC"
+                },
+                "InternetGatewayId": {
+                    "Ref": "myvpcIGW"
+                }
+            }
+        },
+
+        "myvpcRouteTable": {
+            "Type": "AWS::EC2::RouteTable",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "myVPC"
+                },
+                "Tags": [{
+                    "Key":"Name",
+                    "Value": "myvpcRouteTable"
+                }]
+            }
+        },
+
+        "routeTableAssocName": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "myvpcSubnet"
+                },
+                "RouteTableId": {
+                    "Ref": "myvpcRouteTable"
+                }
+
+            }
+        },
+        
+        "routeToInternetGateway": {
+          "Type": "AWS::EC2::Route",
+          "Properties": {
+            "RouteTableId": 
+            { "Ref": "myvpcRouteTable" }
+            ,
+            "DestinationCidrBlock": "0.0.0.0/0",
+            "GatewayId": "myvpcIGW"
+          }
+        }
+        
+
+    },
+    "Outputs": {
+
+    }
+}
