@@ -1,0 +1,19 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: "Create a Simple Amazon S3 Bucket"
+Parameters: 
+  MyS3BucketName:
+    Description: "S3 Bucket Name" 
+    Type: String
+Resources:
+  # Create S3 bucket
+  s3Bucket:
+    Type: AWS::S3::Bucket
+    Properties: 
+      AccessControl: Private
+      BucketName:
+        Ref: MyS3BucketName
+      VersioningConfiguration:
+        Status: Enabled 
+      Tags:
+        - Key: key
+          Value: value
