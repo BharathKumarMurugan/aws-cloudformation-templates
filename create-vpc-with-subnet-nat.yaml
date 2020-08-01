@@ -1,0 +1,225 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: "Create a VPC with Public Private Subents and NAT Gateway"
+Parameters: 
+  # VPC CIDR Block
+  VpcCidrBlock:
+    Description: "VPC CIDR Block"
+    Type: String
+    Default: 10.1.1.0/24
+  # Public Subnet CIDR Block
+  PubSubCidrBlock:
+    Description: "Public Subnet CIDR Block"
+    Type: String
+    Default: 10.1.1.0/28
+  # Private Subnet CIDR Block
+  PvtSubCidrBlock:
+    Description: "Private Subnet CIDR Block"
+    Type: String
+    Default: 10.1.1.16/28
+  # Public Subnet AZ
+  PubSubAZ:
+    Description: "Public Subnet AZ" 
+    Type: String
+    Default: us-east-2a
+  # Private Subnet AZ
+  PvtSubAZ:
+    Description: "Private Subnet AZ" 
+    Type: String
+    Default: us-east-2b
+
+Resources: 
+  # Create a VPC
+  ThanosVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 
+        Ref: VpcCidrBlock
+      EnableDnsSupport: 'true'
+      EnableDnsHostnames: 'true'
+      InstanceTenancy: default
+      Tags:
+        - Key: Name
+          Value: ThanosVPC
+  # Create a Internet Gateway
+  ThanosIGW:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: ThanosIGW
+    DependsOn: ThanosVPC
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref ThanosVPC
+      InternetGatewayId: !Ref ThanosIGW
+  # Create a Public Subnet
+  ThanosPubSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone:
+        Ref: PubSubAZ
+      VpcId: !Ref ThanosVPC
+      CidrBlock:
+        Ref: PubSubCidrBlock
+      Tags:
+        - Key: Name
+          Value: ThanosPubSubnet
+    DependsOn: ThanosVPC
+  # Create a Private Subnet
+  ThanosPvtSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone:
+        Ref: PvtSubAZ
+      VpcId: !Ref ThanosVPC
+      CidrBlock:
+        Ref: PvtSubCidrBlock
+      Tags:
+        - Key: Name
+          Value: ThanosPvtSubnet
+    DependsOn: ThanosVPC
+  # Create Route Table for Public Subnet
+  ThanosPubRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref ThanosVPC
+      Tags:
+        - Key: Name
+          Value: ThanosPubRouteTable
+    DependsOn: ThanosVPC
+  # Associate Public Route Table with Public Subnet
+  ThanosPubRTAssociate:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref ThanosPubSubnet
+      RouteTableId: !Ref ThanosPubRouteTable
+    DependsOn: ThanosPubRouteTable
+  # Attach IGW to Public RT
+  ThanosPubRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref ThanosPubRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref ThanosIGW
+    DependsOn: ThanosIGW
+  # Create an Elastic IP
+  ThanosEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+  # Create NAT Gateway
+  ThanosNatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties: 
+      AllocationId: !GetAtt 'ThanosEIP.AllocationId'
+      SubnetId: !Ref ThanosPubSubnet
+      Tags: 
+        - Key: Name
+          Value: ThanosNatGateway
+    DependsOn: ThanosEIP
+  # Create Route Table for Private Subnet
+  ThanosPvtRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref ThanosVPC
+      Tags:
+        - Key: Name
+          Value: ThanosPvtRouteTable
+    DependsOn: ThanosVPC
+  # Associate Public Route Table with Private Subnet
+  ThanosPvtRTAssociate:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref ThanosPvtSubnet
+      RouteTableId: !Ref ThanosPvtRouteTable
+    DependsOn: ThanosPvtRouteTable
+  # Attach NAT to Public RT
+  ThanosPvtRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref ThanosPvtRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref ThanosNatGateway
+    DependsOn: ThanosNatGateway
+  # Create a Sec Group for Public Subnet
+  ThanosPubSecGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: ThanosPubSecGroup
+      GroupDescription: 'Security Group for public Subnet'
+      VpcId: !Ref ThanosVPC
+      SecurityGroupIngress:
+        - 
+          CidrIp: "43.224.128.77/32"
+          FromPort: 22
+          ToPort: 22
+          IpProtocol: tcp
+        -
+          CidrIp: "0.0.0.0/0"
+          FromPort: 80
+          ToPort: 80
+          IpProtocol: tcp
+        - 
+          CidrIp:
+            Ref: PvtSubCidrBlock
+          FromPort: 22
+          ToPort: 22
+          IpProtocol: tcp
+      Tags:
+        - Key: Name
+          Value: ThanosPubSecGroup
+  # Create a Sec Group for Private Subnet 
+  ThanosPvtSecGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: ThanosPvtSecGroup
+      GroupDescription: 'Security Group for private Subnet'
+      VpcId: !Ref ThanosVPC
+      SecurityGroupIngress:
+        - 
+          CidrIp:
+            Ref: PvtSubCidrBlock
+          FromPort: 22
+          ToPort: 22
+          IpProtocol: tcp
+      Tags:
+        - Key: Name
+          Value: ThanosPvtSecGroup
+Outputs:
+  ExportVPCID:
+    Description: Information about the value
+    Value: !Ref ThanosVPC
+    Export: 
+      Name:
+        Fn::Sub: "${AWS::StackName}-VPCID"
+  ExportPubSubID:
+    Description: Information about the value
+    Value: !Ref ThanosPubSubnet
+    Export: 
+      Name:
+        Fn::Sub: "${AWS::StackName}-PubSubID"
+  ExportPvtSubID:
+    Description: Information about the value
+    Value: !Ref ThanosPvtSubnet
+    Export: 
+      Name:
+        Fn::Sub: "${AWS::StackName}-PvtSubID"
+  ExportEIP:
+    Description: Information about the value
+    Value: !Ref ThanosEIP
+    Export: 
+      Name:
+        Fn::Sub: "${AWS::StackName}-EIP"
+  ThanosPubSecGroup:
+    Description: Information about the value
+    Value: !Ref ThanosPubSecGroup
+    Export: 
+      Name:
+        Fn::Sub: "${AWS::StackName}-PubSecGroupID"
+  ThanosPvtSecGroup:
+    Description: Information about the value
+    Value: !Ref ThanosPvtSecGroup
+    Export: 
+      Name:
+        Fn::Sub: "${AWS::StackName}-PvtSecGroupID"
