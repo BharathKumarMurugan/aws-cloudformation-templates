@@ -1,0 +1,58 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: "Create an IAM role"
+
+Parameters:
+  myRoleName:
+    Description: "Name of the service Role"
+    Type: String
+  myPolicyName:
+    Description: "Name of the Policy"
+    Type: String
+
+Resources: 
+  myBasicLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+              - ec2.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      RoleName:
+        Ref: myRoleName
+      Policies:
+        - 
+          PolicyName:
+            Ref: myPolicyName
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - 
+                Effect: "Allow"
+                Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+                Resource: "*"
+      Tags:
+        - Key: Name
+          Value: myBasicLambdaExecutionRole
+        - Key: Purpose
+          Value: Learning
+Outputs:
+  RoleName:
+    Description: "Exporting RoleName"
+    Value: !Ref myBasicLambdaExecutionRole
+    Export: 
+      Name:
+        Fn::Sub: "${AWS::StackName}-RoleName"
+  RoleARN:
+    Description: "Exporting Role ARN"
+    Value: !GetAtt myBasicLambdaExecutionRole.Arn
+    Export: 
+      Name: !Sub "${AWS::StackName}-RoleARN"

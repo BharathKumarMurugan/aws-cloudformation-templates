@@ -11,4 +11,4 @@ Create a S3 bucket | [Click Here](create-s3-bucket.yaml)
 Create a S3 bucket with CORS enabled and a policy attached | [Click Here](create-s3-with-policy.yaml)
 Create an EC2 instance for webserver by importing values from another stack | [Click Here](create-webserver-instance.yaml)
 Create an EC2 instance for webserver with region mapping | [Click Here](create-webserver-instance-2.yaml)
-
+Create an IAM Role with Basic Lambda Execution Policy and AssumeRole attached | [Click Here](create-iam-role.yaml)
