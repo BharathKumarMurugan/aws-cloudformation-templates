@@ -1,0 +1,36 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: "Create an AWS Lambda function"
+
+Parameters: 
+  IAMRole:
+    Description: "IAM role"
+    Type: String
+
+Resources:
+  mylambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: "Lambda Function Created using CloudFormation Template"
+      FunctionName: CaptionMarvelFunction
+      Handler: "index.main_handler"
+      MemorySize: 128
+      Role: !Ref IAMRole
+      Runtime: python3.7
+      Timeout: 5
+      Environment:
+        Variables:
+          ENV_FNAME: Bharath # A map of key-value pairs that the Lambda function can access
+      Code:
+        ZipFile: |
+          import json
+          import os
+
+          def main_handler(event, context):
+              env_var = os.environ['ENV_FNAME']
+              return {"status":200, "message":"Welcome, {}".format(env_var)}
+      Tags:
+        - Key: Name
+          Value: CaptainMarvelFunction
+        - Key: Purpose
+          Value: Learning
