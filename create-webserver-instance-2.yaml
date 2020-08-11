@@ -1,0 +1,93 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: "Creating EC2 instance with functions"
+
+Parameters: 
+  KeyName:
+    Description: "Key pair name"
+    Type: AWS::EC2::KeyPair::KeyName
+
+  SpiderManVPC:
+    Description: "VPC to launch the EC2"
+    Type: AWS::EC2::VPC::Id
+
+  SpiderManSubnet:
+    Description: "Subnet to launch"
+    Type: AWS::EC2::Subnet::Id
+
+  LoadTestURL:
+    Description: "URL for load testing"
+    Type: String
+    Default: "http://widdix.net"
+
+Mappings: 
+  RegionAMIMap:
+    us-east-1:
+      AmazonLinux: "ami-02354e95b39ca8dec"
+    us-east-2:
+      AmazonLinux: "ami-07c8bc5c1ce9598c3"
+    us-west-1:
+      AmazonLinux: "ami-05655c267c89566dd"
+    ap-south-1:
+      AmazonLinux: "ami-0ebc1ac48dfd14136"
+
+Resources:
+  spidermanSecGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: SpiderManSecurityGroup
+      GroupDescription: Allow SSH to SpiderMan
+      VpcId:
+        Ref: "SpiderManVPC"
+      SecurityGroupIngress:
+        -
+          IpProtocol: "tcp"
+          FromPort: 22
+          ToPort: 22
+          CidrIp: "0.0.0.0/0"
+      Tags:
+        - Key: Name
+          Value: SpiderManSecurityGroup
+
+  spidermanInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      KeyName:
+        Ref: KeyName
+      ImageId: !FindInMap
+        - RegionAMIMap
+        - !Ref 'AWS::Region'
+        - AmazonLinux
+      InstanceType: t2.nano
+      Monitoring: false
+      NetworkInterfaces:
+        -
+          AssociatePublicIpAddress: true
+          DeleteOnTermination: true
+          DeviceIndex : 0
+          # Importing Parent Stack's Exported values
+          GroupSet: 
+          - !Ref "spidermanSecGroup"
+          SubnetId: !Ref SpiderManSubnet
+      UserData: 
+        'Fn::Base64': !Sub |
+          #!/bin/bash -ex
+          sudo yum update -y
+          sudo yum install -y httpd httpd-tools
+          cd /var/www/html
+          echo "<html><body>Hello World!</body></html>" > index.html
+          service httpd start
+      Tags:
+        - Key: Name
+          Value: spidermanInstance
+
+Outputs:
+  spidermanInstanceID:
+    Description: "Export Instance ID"
+    Value: !Ref spidermanInstance
+    Export: 
+      Name: !Sub "${AWS::StackName}-InstanceID"
+  publicIPAddress:
+    Description: "Exporting Public IP address"
+    Value: !GetAtt spidermanInstance.PublicIp
+    Export: 
+      Name: !Sub "${AWS::StackName}-PublicIP"
