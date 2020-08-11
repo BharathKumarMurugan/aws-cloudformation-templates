@@ -1,0 +1,56 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: "Create a S3 bucket with policy attached"
+Parameters:
+  myBucketName:
+    Description: "Name of the Bucket"
+    Type: String
+
+Resources:
+  myS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties: 
+      AccessControl: PublicRead
+      BucketName:
+        Ref: myBucketName
+      CorsConfiguration:
+        CorsRules:
+        - AllowedHeaders: ['*']
+          AllowedMethods: [GET]
+          AllowedOrigins: ['*']
+          ExposedHeaders: [Date]
+          Id: myCORSRuleId1
+          MaxAge: '3600'
+      LifecycleConfiguration:
+        Rules:
+        - Id: GlacierRule
+          Prefix: glacier
+          Status: Enabled
+          ExpirationInDays: '365'
+          Transitions:
+            - TransitionInDays: '1'
+              StorageClass: GLACIER
+      VersioningConfiguration: 
+        Status: Enabled
+      Tags:
+        - Key: key
+          Value: value
+  s3BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket:
+        Ref: myBucketName
+      PolicyDocument:
+        Statement:
+        - Sid: Stmt1597127711310
+          Action:
+          - s3:GetObject
+          Effect: Allow
+          Resource:
+            Fn::Join:
+              - ""
+              -
+                - "arn:aws:s3:::"
+                -
+                  Ref: myBucketName
+                - "/*"
+          Principal: "*"
