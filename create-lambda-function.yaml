@@ -18,6 +18,8 @@ Resources:
       Role: !Ref IAMRole
       Runtime: python3.7
       Timeout: 5
+      TracingConfig:
+        Mode: Active
       Environment:
         Variables:
           ENV_FNAME: Bharath # A map of key-value pairs that the Lambda function can access
